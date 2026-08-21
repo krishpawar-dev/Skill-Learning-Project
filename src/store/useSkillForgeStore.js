@@ -45,6 +45,16 @@ const createUserFromEmail = (email) => {
 
 const unique = (items) => [...new Set(items)]
 
+const withChatTimestamps = (chat) => ({
+  ...chat,
+  createdAt: chat.createdAt || Date.now(),
+  updatedAt: chat.updatedAt || chat.createdAt || Date.now(),
+  messages: (chat.messages || []).map((message, index) => ({
+    ...message,
+    timestamp: message.timestamp || chat.createdAt || Date.now() + index,
+  })),
+})
+
 const evaluateBadges = ({ user, completedQuizzes, roadmapsProgress, chats }) => {
   const earned = ['streak-master', 'quiz-ace', 'explorer']
 
@@ -83,7 +93,7 @@ export const useSkillForgeStore = create(
       ],
       activities: recentActivities,
       notifications: notificationSeed,
-      chats: assistantHistorySeed,
+      chats: assistantHistorySeed.map(withChatTimestamps),
       earnedBadges: ['streak-master', 'quiz-ace', 'explorer'],
 
       addXp: (amount, reason = 'Learning progress') => {
@@ -199,24 +209,35 @@ export const useSkillForgeStore = create(
       },
 
       addChatMessage: (threadId, message) => {
+        const timestamp = Date.now()
         set((state) => ({
           chats: state.chats.map((chat) =>
-            chat.id === threadId ? { ...chat, messages: [...chat.messages, message] } : chat,
+            chat.id === threadId
+              ? {
+                  ...chat,
+                  updatedAt: timestamp,
+                  messages: [...chat.messages, { ...message, timestamp }],
+                }
+              : chat,
           ),
         }))
       },
 
       createChat: (title) => {
         const id = `chat-${Date.now()}`
+        const timestamp = Date.now()
         set((state) => ({
           chats: [
             {
               id,
               title,
+              createdAt: timestamp,
+              updatedAt: timestamp,
               messages: [
                 {
                   role: 'assistant',
                   content: 'Ready when you are. Share your goal and I will forge the roadmap.',
+                  timestamp,
                 },
               ],
               bookmarked: false,
@@ -225,6 +246,22 @@ export const useSkillForgeStore = create(
           ],
         }))
         return id
+      },
+
+      renameChat: (id, title) => {
+        const nextTitle = title.trim()
+        if (!nextTitle) return
+        set((state) => ({
+          chats: state.chats.map((chat) =>
+            chat.id === id ? { ...chat, title: nextTitle, updatedAt: Date.now() } : chat,
+          ),
+        }))
+      },
+
+      deleteChat: (id) => {
+        set((state) => ({
+          chats: state.chats.filter((chat) => chat.id !== id),
+        }))
       },
 
       toggleChatBookmark: (id) => {

@@ -1,7 +1,10 @@
 import {
   Bookmark,
   Bot,
+  Check,
   Copy,
+  Edit3,
+  Trash2,
   Download,
   MessageSquarePlus,
   Send,
@@ -40,10 +43,45 @@ export default function AiRoadmapPage() {
   const addChatMessage = useSkillForgeStore((state) => state.addChatMessage)
   const createChat = useSkillForgeStore((state) => state.createChat)
   const toggleChatBookmark = useSkillForgeStore((state) => state.toggleChatBookmark)
+  const renameChat = useSkillForgeStore((state) => state.renameChat)
+  const deleteChat = useSkillForgeStore((state) => state.deleteChat)
   const [activeId, setActiveId] = useState(chats[0]?.id)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [editingChatId, setEditingChatId] = useState(null)
+  const [editingTitle, setEditingTitle] = useState('')
   const activeChat = useMemo(() => chats.find((chat) => chat.id === activeId) || chats[0], [activeId, chats])
+
+
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return 'Time unavailable'
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(timestamp))
+  }
+
+  const startRename = (chat) => {
+    setEditingChatId(chat.id)
+    setEditingTitle(chat.title)
+  }
+
+  const saveRename = (chatId) => {
+    renameChat(chatId, editingTitle)
+    setEditingChatId(null)
+    setEditingTitle('')
+  }
+
+  const removeChat = (chatId) => {
+    const wasActive = activeId === chatId
+    deleteChat(chatId)
+    if (wasActive) {
+      const remaining = chats.filter((chat) => chat.id !== chatId)
+      setActiveId(remaining[0]?.id)
+    }
+    if (editingChatId === chatId) setEditingChatId(null)
+    toast.success('Chat deleted')
+  }
 
   const sendPrompt = async (promptValue = input) => {
     const prompt = promptValue.trim()
@@ -110,25 +148,54 @@ export default function AiRoadmapPage() {
           </div>
           <div className="mt-4 flex-1 space-y-2 overflow-y-auto pr-1 scrollbar-soft">
             {chats.map((chat) => (
-              <button
-                type="button"
+              <div
                 key={chat.id}
-                onClick={() => setActiveId(chat.id)}
                 className={cn(
-                  'w-full rounded-lg p-3 text-left transition-all premium-focus',
+                  'rounded-lg p-3 transition-all',
                   activeChat?.id === chat.id
                     ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950'
                     : 'bg-slate-950/[0.03] text-slate-700 hover:bg-slate-950/[0.06] dark:bg-white/[0.05] dark:text-slate-200 dark:hover:bg-white/10',
                 )}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="truncate text-sm font-bold">{chat.title}</span>
-                  {chat.bookmarked && <Bookmark className="h-4 w-4 shrink-0" aria-hidden="true" />}
-                </div>
-                <p className="mt-1 truncate text-xs opacity-70">
-                  {chat.messages[chat.messages.length - 1]?.content}
-                </p>
-              </button>
+                {editingChatId === chat.id ? (
+                  <div className="flex gap-2">
+                    <input
+                      autoFocus
+                      value={editingTitle}
+                      onChange={(event) => setEditingTitle(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') saveRename(chat.id)
+                        if (event.key === 'Escape') setEditingChatId(null)
+                      }}
+                      className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-bold text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                    />
+                    <IconButton icon={Check} label="Save chat name" onClick={() => saveRename(chat.id)} />
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveId(chat.id)}
+                      className="min-w-0 flex-1 text-left premium-focus"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="truncate text-sm font-bold">{chat.title}</span>
+                        {chat.bookmarked && <Bookmark className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                      </div>
+                      <p className="mt-1 truncate text-xs opacity-70">
+                        {chat.messages[chat.messages.length - 1]?.content}
+                      </p>
+                      <p className="mt-2 text-[11px] opacity-60">
+                        {formatDateTime(chat.updatedAt || chat.createdAt)}
+                      </p>
+                    </button>
+                    <div className="flex shrink-0 gap-1">
+                      <IconButton icon={Edit3} label="Edit chat name" onClick={() => startRename(chat)} />
+                      <IconButton icon={Trash2} label="Delete chat" onClick={() => removeChat(chat.id)} />
+                    </div>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 
@@ -176,13 +243,16 @@ export default function AiRoadmapPage() {
                     )}
                     <div
                       className={cn(
-                        'max-w-[860px] whitespace-pre-line rounded-lg px-4 py-3 text-sm leading-7',
+                        'max-w-[860px] rounded-lg px-4 py-3 text-sm leading-7',
                         isUser
                           ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950'
                           : 'border border-slate-200/80 bg-white/64 text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200',
                       )}
                     >
-                      {message.content}
+                      <div className="whitespace-pre-line">{message.content}</div>
+                      <div className={cn('mt-1 text-[10px] opacity-50', isUser ? 'text-right' : 'text-left')}>
+                        {formatDateTime(message.timestamp)}
+                      </div>
                     </div>
                     {isUser && (
                       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-500 text-white">
