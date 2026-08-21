@@ -241,9 +241,10 @@ export const useSkillForgeStore = create(
         })
       },
 
-      signIn: (email) => {
+      signIn: (email, username) => {
         const normalizedEmail = email.trim().toLowerCase()
-        if (!normalizedEmail) return
+        const normalizedUsername = username?.trim().replace(/^@/, '')
+        if (!normalizedEmail || !normalizedUsername) return
 
         set((state) => {
           const currentEmail = state.user?.email
@@ -251,7 +252,25 @@ export const useSkillForgeStore = create(
             ...state.accountsByEmail,
             ...(currentEmail ? { [currentEmail]: state.user } : {}),
           }
-          const user = accounts[normalizedEmail] || createUserFromEmail(normalizedEmail)
+          const existingUser = accounts[normalizedEmail]
+          const baseUser = existingUser || createUserFromEmail(normalizedEmail)
+          const avatar = normalizedUsername
+            .split(/[\s._-]+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((word) => word[0])
+            .join('')
+            .toUpperCase()
+
+          // The username entered at login is the single source of truth for
+          // the dashboard greeting and profile display name.
+          const user = {
+            ...baseUser,
+            name: normalizedUsername,
+            username: normalizedUsername,
+            email: normalizedEmail,
+            avatar: avatar || 'SF',
+          }
 
           return {
             user,

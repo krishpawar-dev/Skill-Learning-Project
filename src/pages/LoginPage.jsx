@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, LockKeyhole, Mail, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, Mail, UserRound, ArrowRight, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Logo from '../components/common/Logo.jsx'
@@ -12,7 +12,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ username: '', email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const signIn = useSkillForgeStore((state) => state.signIn)
 
@@ -24,18 +24,19 @@ export default function LoginPage() {
   const handleSubmit = (event) => {
     event.preventDefault()
 
+    const username = form.username.trim().replace(/^@/, '')
     const email = form.email.trim().toLowerCase()
 
-    if (!email || !form.password) {
-      toast.error('Please enter your email and password.')
+    if (!username || !email || !form.password) {
+      toast.error('Please enter your username, email and password.')
       return
     }
 
     setLoading(true)
 
-    // Demo authentication: the entered email now becomes the active SkillForge account.
+    // Demo authentication: username is now the display name for the active SkillForge account.
     // Replace this validation with api.auth.login(...) when the backend is connected.
-    signIn(email)
+    signIn(email, username)
 
     const storage = remember ? localStorage : sessionStorage
     if (!remember) localStorage.removeItem('skillforge-auth')
@@ -110,6 +111,25 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Username
+                </span>
+                <div className="relative">
+                  <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    required
+                    type="text"
+                    name="username"
+                    autoComplete="username"
+                    value={form.username}
+                    onChange={handleChange}
+                    placeholder="Enter your username"
+                    className="premium-focus h-12 w-full rounded-xl border border-slate-200/80 bg-white/70 pl-10 pr-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:focus:border-cyan-300/60"
+                  />
+                </div>
+              </label>
+
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
                   Email address
@@ -199,7 +219,7 @@ export default function LoginPage() {
             </Link>
 
             <p className="mt-6 text-center text-xs leading-5 text-slate-400">
-              Demo mode is enabled: each email gets its own local profile. Connect the submit handler to your authentication API for production.
+              Demo mode is enabled: each email + username combination is saved to the local profile. Connect the submit handler to your authentication API for production.
             </p>
           </div>
         </section>
