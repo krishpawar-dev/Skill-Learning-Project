@@ -7,12 +7,40 @@ import { getLevelFromXp, todayKey } from '../utils/formatters'
 const initialUser = {
   name: 'Krish Pawar',
   username: 'krish.forges',
+  email: 'krish@example.com',
   role: 'Full-stack learner',
   avatar: 'KP',
   xp: 860,
   streak: 12,
   completedSkills: 38,
   quizzesTaken: 24,
+}
+
+const createUserFromEmail = (email) => {
+  const normalizedEmail = email.trim().toLowerCase()
+  const localPart = normalizedEmail.split('@')[0] || 'learner'
+  const words = localPart
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+  const name = words.join(' ') || 'SkillForge Learner'
+  const usernameBase = localPart.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'learner'
+  const avatar = name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
+
+  return {
+    ...initialUser,
+    name,
+    username: `${usernameBase}.forge`,
+    email: normalizedEmail,
+    avatar: avatar || 'SF',
+  }
 }
 
 const unique = (items) => [...new Set(items)]
@@ -40,6 +68,9 @@ export const useSkillForgeStore = create(
   persist(
     (set, get) => ({
       user: initialUser,
+      accountsByEmail: {
+        [initialUser.email]: initialUser,
+      },
       roadmapsProgress: {
         react: ['react-basics-jsx', 'react-basics-components', 'intermediate-react-hooks'],
         javascript: ['javascript-basics-variables', 'javascript-basics-functions'],
@@ -210,13 +241,58 @@ export const useSkillForgeStore = create(
         })
       },
 
+      signIn: (email) => {
+        const normalizedEmail = email.trim().toLowerCase()
+        if (!normalizedEmail) return
+
+        set((state) => {
+          const currentEmail = state.user?.email
+          const accounts = {
+            ...state.accountsByEmail,
+            ...(currentEmail ? { [currentEmail]: state.user } : {}),
+          }
+          const user = accounts[normalizedEmail] || createUserFromEmail(normalizedEmail)
+
+          return {
+            user,
+            accountsByEmail: {
+              ...accounts,
+              [normalizedEmail]: user,
+            },
+          }
+        })
+      },
+
+      signOut: () => {
+        set({ user: initialUser })
+      },
+
       updateProfile: (profile) => {
-        set((state) => ({
-          user: {
+        set((state) => {
+          const nextUser = {
             ...state.user,
             ...profile,
-          },
-        }))
+          }
+
+          if (profile.name) {
+            const avatar = profile.name
+              .split(' ')
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((word) => word[0])
+              .join('')
+              .toUpperCase()
+            if (avatar) nextUser.avatar = avatar
+          }
+
+          return {
+            user: nextUser,
+            accountsByEmail: {
+              ...state.accountsByEmail,
+              [nextUser.email]: nextUser,
+            },
+          }
+        })
       },
 
       getEarnedBadges: () => {
@@ -229,6 +305,7 @@ export const useSkillForgeStore = create(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
+        accountsByEmail: state.accountsByEmail,
         roadmapsProgress: state.roadmapsProgress,
         roadmapViews: state.roadmapViews,
         bookmarkedRoadmaps: state.bookmarkedRoadmaps,

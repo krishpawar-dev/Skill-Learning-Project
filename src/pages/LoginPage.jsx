@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import Logo from '../components/common/Logo.jsx'
 import ThemeToggle from '../components/common/ThemeToggle.jsx'
 import { pageTransition } from '../animations/pageTransitions.js'
+import { useSkillForgeStore } from '../store/useSkillForgeStore'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true)
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
+  const signIn = useSkillForgeStore((state) => state.signIn)
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -22,19 +24,25 @@ export default function LoginPage() {
   const handleSubmit = (event) => {
     event.preventDefault()
 
-    if (!form.email.trim() || !form.password) {
+    const email = form.email.trim().toLowerCase()
+
+    if (!email || !form.password) {
       toast.error('Please enter your email and password.')
       return
     }
 
     setLoading(true)
 
-    // Frontend-only auth for now. Replace this with your API call later.
+    // Demo authentication: the entered email now becomes the active SkillForge account.
+    // Replace this validation with api.auth.login(...) when the backend is connected.
+    signIn(email)
+
     const storage = remember ? localStorage : sessionStorage
+    if (!remember) localStorage.removeItem('skillforge-auth')
     storage.setItem(
       'skillforge-auth',
       JSON.stringify({
-        email: form.email.trim(),
+        email,
         loggedIn: true,
         loggedInAt: new Date().toISOString(),
       }),
@@ -43,7 +51,7 @@ export default function LoginPage() {
     window.setTimeout(() => {
       toast.success('Welcome back to SkillForge!')
       navigate('/dashboard')
-    }, 450)
+    }, 300)
   }
 
   return (
@@ -191,7 +199,7 @@ export default function LoginPage() {
             </Link>
 
             <p className="mt-6 text-center text-xs leading-5 text-slate-400">
-              Frontend demo login is enabled. Connect the submit handler to your authentication API when the backend is ready.
+              Demo mode is enabled: each email gets its own local profile. Connect the submit handler to your authentication API for production.
             </p>
           </div>
         </section>

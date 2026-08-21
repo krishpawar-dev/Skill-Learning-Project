@@ -7,9 +7,11 @@ import {
   Flame,
   PenLine,
   Trophy,
+  X,
   Zap,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 import BadgePill from '../components/common/BadgePill'
 import GlassCard from '../components/common/GlassCard'
@@ -33,6 +35,29 @@ export default function ProfilePage() {
   const roadmapsProgress = useSkillForgeStore((state) => state.roadmapsProgress)
   const completedQuizzes = useSkillForgeStore((state) => state.completedQuizzes)
   const progress = getLevelProgress(user.xp)
+  const updateProfile = useSkillForgeStore((state) => state.updateProfile)
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({
+    name: user.name || '',
+    username: user.username || '',
+    role: user.role || '',
+  })
+
+  const handleSaveProfile = (event) => {
+    event.preventDefault()
+    const name = form.name.trim()
+    const username = form.username.trim().replace(/^@/, '')
+    const role = form.role.trim()
+
+    if (!name || !username || !role) {
+      toast.error('Name, username and role are required.')
+      return
+    }
+
+    updateProfile({ name, username, role })
+    setEditing(false)
+    toast.success('Profile updated successfully.')
+  }
   const completedRoadmaps = roadmaps
     .map((roadmap) => {
       const completed = roadmapsProgress[roadmap.slug]?.length || 0
@@ -91,7 +116,14 @@ export default function ProfilePage() {
             <PremiumButton
               icon={PenLine}
               variant="secondary"
-              onClick={() => toast.success('Profile editor is ready for backend wiring')}
+              onClick={() => {
+                setForm({
+                  name: user.name || '',
+                  username: user.username || '',
+                  role: user.role || '',
+                })
+                setEditing(true)
+              }}
             >
               Edit profile
             </PremiumButton>
@@ -223,6 +255,73 @@ export default function ProfilePage() {
           </div>
         </GlassCard>
       </section>
+      {editing && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="w-full max-w-lg rounded-2xl border border-white/60 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black text-slate-950 dark:text-white">Edit profile</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Changes are saved to the currently signed-in local account.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close profile editor"
+                onClick={() => setEditing(false)}
+                className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="mt-6 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Full name</span>
+                <input
+                  value={form.name}
+                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                  className="premium-focus h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Username</span>
+                <input
+                  value={form.username}
+                  onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))}
+                  className="premium-focus h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Role / goal</span>
+                <input
+                  value={form.role}
+                  onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}
+                  placeholder="Cyber Security learner"
+                  className="premium-focus h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
+                />
+              </label>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <PremiumButton type="submit" icon={CheckCircle2}>
+                  Save changes
+                </PremiumButton>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
     </motion.div>
   )
 }

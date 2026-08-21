@@ -8,10 +8,11 @@ import {
   Trophy,
   User,
 } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { cn } from '../../utils/formatters'
 import IconButton from '../common/IconButton'
 import Logo from '../common/Logo'
+import { useSkillForgeStore } from '../../store/useSkillForgeStore'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
@@ -22,6 +23,16 @@ const navItems = [
 ]
 
 export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }) {
+  const navigate = useNavigate()
+  const signOut = useSkillForgeStore((state) => state.signOut)
+
+  const handleSignOut = () => {
+    signOut()
+    localStorage.removeItem('skillforge-auth')
+    sessionStorage.removeItem('skillforge-auth')
+    navigate('/login')
+  }
+
   return (
     <>
       <div
@@ -101,6 +112,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }) 
               collapsed && 'mt-0',
             )}
             title="Sign out"
+            onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
             {!collapsed && <span>Sign out</span>}
